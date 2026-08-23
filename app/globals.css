@@ -1,0 +1,32 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #f7f3ec;
+  background-image: repeating-linear-gradient(
+    180deg,
+    transparent,
+    transparent 34px,
+    #eae2d0 35px
+  );
+  color: #20303d;
+}
+
+.card {
+  background: #fffdf8;
+  border: 1px solid #dfd6c4;
+  border-radius: 10px;
+  box-shadow: 0 1px 0 #dfd6c4;
+}
+
+.ledger-stamp {
+  font-family: "Noto Serif SC", serif;
+  letter-spacing: 0.05em;
+}
+
+::selection {
+  background: #b3562b33;
+}
