@@ -14,27 +14,28 @@ import {
   Cell,
 } from 'recharts';
 import { supabase } from '@/lib/supabaseClient';
-import { useAuth } from '@/lib/AuthContext';
+import { useWhoAmI } from '@/lib/WhoAmIContext';
+import WhoAmIPicker from '@/components/WhoAmIPicker';
 import { PersonalTransaction, Category } from '@/lib/types';
 import { monthKey, yearKey, fmtMoney } from '@/lib/date';
 
 const PIE_COLORS = ['#B3562B', '#3F6FA6', '#2F7A4F', '#8A6B3A', '#6E5A9C', '#C08A2B', '#4B7A8C'];
 
 export default function StatsPage() {
-  const { session, loading } = useAuth();
+  const { me, loading } = useWhoAmI();
   const [txs, setTxs] = useState<PersonalTransaction[]>([]);
   const [cats, setCats] = useState<Category[]>([]);
   const [range, setRange] = useState<'month' | 'year'>('month');
 
   const load = useCallback(async () => {
-    if (!session) return;
+    if (!me) return;
     const [{ data: t }, { data: c }] = await Promise.all([
-      supabase.from('personal_transactions').select('*').eq('user_id', session.user.id),
-      supabase.from('categories').select('*').eq('user_id', session.user.id),
+      supabase.from('personal_transactions').select('*').eq('owner_id', me.id),
+      supabase.from('categories').select('*').eq('owner_id', me.id),
     ]);
     setTxs((t as PersonalTransaction[]) || []);
     setCats((c as Category[]) || []);
-  }, [session]);
+  }, [me]);
 
   useEffect(() => {
     load();
@@ -68,6 +69,7 @@ export default function StatsPage() {
   }, [txs, cats, range, currentPeriod]);
 
   if (loading) return null;
+  if (!me) return <WhoAmIPicker />;
 
   return (
     <div className="space-y-6">

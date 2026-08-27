@@ -1,6 +1,9 @@
 # 我们的账本 · 个人 + 双人记账 Web 应用
 
-技术栈：Next.js 14 (App Router，静态导出) + Tailwind CSS + Supabase（Postgres + Auth + RLS）+ Recharts。
+技术栈：Next.js (App Router，静态导出) + Tailwind CSS + Supabase（Postgres，无需登录注册）+ Recharts。
+
+> **无需登录注册**：打开网页后从"你是谁"里选一个身份（比如"我"/"对方"）即可直接使用，
+> 选择会记在本设备浏览器里，之后不用重复选。数据库里固定只有两个人，专为你们两人设计。
 
 ---
 
@@ -8,27 +11,35 @@
 
 ```
 浏览器 (React 静态站点，托管在 GitHub Pages / Vercel / Cloudflare Pages)
-        │  直接调用 Supabase REST API（用 anon key，受 RLS 保护）
+        │  直接调用 Supabase REST API（用 anon key）
         ▼
 Supabase 项目
-  ├─ Auth：邮箱+密码登录
-  ├─ Postgres 表：
-  │    profiles              用户资料
-  │    couples                情侣配对关系（一对用户共享一个往来账）
-  │    categories             个人自定义分类
-  │    personal_transactions  个人账本流水
-  │    shared_transactions    双人往来账流水（核心表）
-  └─ RLS 策略：个人数据仅本人可见；往来账仅配对双方可读写
+  └─ Postgres 表：
+       profiles              固定两条记录：你和对方（无需注册，选一个身份即可）
+       categories             个人自定义分类
+       personal_transactions  个人账本流水
+       shared_transactions    双人往来账流水（核心表）
 ```
 
+⚠️ **安全性说明**：去掉登录注册意味着任何拿到你网址的人理论上都能读写数据（因为
+Supabase 的 anon key 会被打包进静态网页里）。默认没有开启严格的行级权限控制，
+只依赖"网址不公开"这层保护。如果这份账本涉及隐私财务数据，强烈建议开启下面的
+"可选：加一层访问码"功能。
+
 完整建表 SQL 见 [`supabase/schema.sql`](./supabase/schema.sql)，可直接整段粘贴到 Supabase 的 SQL Editor 运行。
+
+### 可选：加一层访问码
+
+在 `.env.local`（本地）或 GitHub Secrets（部署）里设置 `NEXT_PUBLIC_ACCESS_CODE=你自己定的码`，
+打开网页时会要求先输入这个码才能看到账本内容，正确后记在本机浏览器里，不用重复输入。
+这不是真正的账号登录，只是防止陌生人随手点进网址看到内容，请不要指望它防住真正想攻击的人。
 
 ### 往来账核心模型（`shared_transactions`）
 
 | 字段 | 说明 |
 |---|---|
 | `kind` | `expense`（一方垫付一笔支出）或 `settlement`（还款/结清） |
-| `payer_id` | 实际付款人 |
+| `payer_id` | 实际付款人（`profiles` 表里两条记录之一） |
 | `amount` | 总金额 |
 | `payer_share` | 付款人自己应承担的比例（0~1）。AA 平摊=0.5，全额帮对方付=0，请客=1，也可自定义 |
 
@@ -46,24 +57,24 @@ Supabase 项目
 npm install
 
 # 2. 配置环境变量
-cp .env.local.example .env.local
+# Windows PowerShell:
+Copy-Item .env.local.example .env.local
+# macOS / Linux:
+# cp .env.local.example .env.local
 # 编辑 .env.local，填入 Supabase 项目的 URL 和 anon key
 # （Supabase 控制台 → Project Settings → API）
 
 # 3. 初始化数据库
 # 打开 Supabase SQL Editor，粘贴并运行 supabase/schema.sql
+# 这一步会自动插入两条初始人物记录："我" 和 "对方"
 
 # 4. 启动开发服务器
 npm run dev
 # 打开 http://localhost:3000
 ```
 
-注册两个账号（分别代表你和女友），登录后在"往来账"页面互相生成/输入邀请码即可绑定。
-
-> **关于邀请码流程的简化说明**：示例中的绑定逻辑为了控制代码量做了简化（`couples.user_b` 会先自引用占位）。
-> 生产环境建议新增一张 `invites(id, inviter_id, code, created_at, used_by)` 表，
-> 邀请人生成邀请码写入 `invites`，被邀请人输入后再由后端（或一个 Supabase Edge Function/RPC）
-> 校验并创建 `couples` 行，这样两边的 `user_id` 都是登录后拿到的真实值，逻辑更严谨、也更安全。
+打开网页后会看到"你是谁"的选择界面，选一个身份即可开始记账。想改成你们的真实名字，
+去"设置"页修改即可。
 
 ---
 
@@ -92,9 +103,7 @@ npm run dev
 
 6. 几分钟后即可通过 `https://<username>.github.io/<repo>/` 访问。
 
-### Supabase 侧还需要做一件事：允许你的 Pages 域名跨域
-Supabase Auth 需要在 **Authentication → URL Configuration** 中把
-`https://<username>.github.io` 加入 **Redirect URLs / Site URL**，否则登录会被拒绝。
+
 
 ---
 
@@ -112,21 +121,24 @@ Supabase Auth 需要在 **Authentication → URL Configuration** 中把
 
 ```
 app/
-  layout.tsx        根布局，挂载 AuthProvider + 顶部导航
-  page.tsx           首页：根据登录状态跳转
-  login/page.tsx      登录/注册
+  layout.tsx        根布局，挂载访问码门槛 + WhoAmIProvider + 顶部导航
+  page.tsx           首页：未选身份则显示"你是谁"，已选则跳个人账本
   personal/page.tsx   个人账本：记账 + 列表
-  shared/page.tsx      双人往来账：绑定伴侣、记账、自动平账、一键结清
+  shared/page.tsx      双人往来账：记账、自动平账、一键结清
   stats/page.tsx        统计：月度/年度收支趋势 + 分类占比
-  settings/page.tsx      个人资料、自定义分类、解绑伴侣
+  settings/page.tsx      修改两人名字、管理自定义分类
+components/
+  AppGate.tsx         可选的访问码软门槛
+  WhoAmIPicker.tsx     "你是谁"身份选择界面
+  Nav.tsx               顶部导航 + 身份切换按钮
 lib/
   supabaseClient.ts  Supabase 客户端单例
-  AuthContext.tsx    登录态 / 个人资料 / 情侣关系的全局 Context
+  WhoAmIContext.tsx  当前身份 / 两人资料的全局 Context（存在 localStorage，无需登录）
   balance.ts          往来账自动平账核心算法（含注释与使用说明）
   types.ts             全局 TypeScript 类型
   date.ts               日期/金额格式化小工具
 supabase/
-  schema.sql          建表 + RLS 策略 + 新用户触发器
+  schema.sql          建表 + 初始两条人物记录 + 开放式访问策略
 .github/workflows/
   deploy.yml            GitHub Pages 自动部署工作流
 ```

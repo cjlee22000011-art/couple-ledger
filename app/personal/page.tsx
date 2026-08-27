@@ -2,12 +2,13 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { useAuth } from '@/lib/AuthContext';
+import { useWhoAmI } from '@/lib/WhoAmIContext';
+import WhoAmIPicker from '@/components/WhoAmIPicker';
 import { Category, PersonalTransaction, TxType } from '@/lib/types';
 import { fmtMoney, today } from '@/lib/date';
 
 export default function PersonalPage() {
-  const { session, loading } = useAuth();
+  const { me, loading } = useWhoAmI();
   const [txs, setTxs] = useState<PersonalTransaction[]>([]);
   const [cats, setCats] = useState<Category[]>([]);
   const [type, setType] = useState<TxType>('expense');
@@ -18,33 +19,36 @@ export default function PersonalPage() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    if (!session) return;
+    if (!me) return;
     const [{ data: t }, { data: c }] = await Promise.all([
       supabase
         .from('personal_transactions')
         .select('*')
-        .eq('user_id', session.user.id)
+        .eq('owner_id', me.id)
         .order('occurred_on', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(200),
-      supabase.from('categories').select('*').eq('user_id', session.user.id).order('name'),
+      supabase.from('categories').select('*').eq('owner_id', me.id).order('name'),
     ]);
     setTxs((t as PersonalTransaction[]) || []);
     setCats((c as Category[]) || []);
-  }, [session]);
+  }, [me]);
 
   useEffect(() => {
     load();
   }, [load]);
 
+  if (loading) return null;
+  if (!me) return <WhoAmIPicker />;
+
   const catsForType = cats.filter((c) => c.type === type);
 
   async function addTx(e: React.FormEvent) {
     e.preventDefault();
-    if (!session || !amount) return;
+    if (!me || !amount) return;
     setBusy(true);
     const { error } = await supabase.from('personal_transactions').insert({
-      user_id: session.user.id,
+      owner_id: me.id,
       type,
       amount: Number(amount),
       category_id: categoryId || null,
@@ -63,8 +67,6 @@ export default function PersonalPage() {
     await supabase.from('personal_transactions').delete().eq('id', id);
     load();
   }
-
-  if (loading) return null;
 
   const monthIncome = sumByType(txs, 'income');
   const monthExpense = sumByType(txs, 'expense');

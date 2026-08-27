@@ -67,13 +67,9 @@ export function computeBalance(
  * 一键结清：生成一笔刚好抹平当前欠款的 settlement 记录（写入前调用）。
  * 调用方负责把返回值插入 shared_transactions 表。
  */
-export function buildSettlementPayload(
-  balance: BalanceResult,
-  coupleId: string
-): Omit<SharedTransaction, 'id'> | null {
+export function buildSettlementPayload(balance: BalanceResult): Omit<SharedTransaction, 'id'> | null {
   if (!balance.fromUserId || !balance.toUserId || balance.amount <= 0) return null;
   return {
-    couple_id: coupleId,
     payer_id: balance.fromUserId, // 欠钱的人发起"还款"
     kind: 'settlement',
     amount: balance.amount,

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAuth } from '@/lib/AuthContext';
+import { useWhoAmI } from '@/lib/WhoAmIContext';
 
 const links = [
   { href: '/personal', label: '个人账本' },
@@ -13,7 +13,7 @@ const links = [
 
 export default function Nav() {
   const pathname = usePathname();
-  const { session, profile, signOut } = useAuth();
+  const { me, clearMe } = useWhoAmI();
 
   return (
     <header className="border-b border-line bg-paper/95 backdrop-blur sticky top-0 z-10">
@@ -21,7 +21,7 @@ export default function Nav() {
         <Link href="/" className="ledger-stamp text-lg font-bold text-ledger">
           我们的账本
         </Link>
-        {session && (
+        {me && (
           <nav className="flex items-center gap-4 text-sm">
             {links.map((l) => (
               <Link
@@ -36,9 +36,14 @@ export default function Nav() {
                 {l.label}
               </Link>
             ))}
-            <span className="text-ink-soft hidden sm:inline">{profile?.display_name}</span>
-            <button onClick={signOut} className="text-ink-soft hover:text-expense text-xs border border-line rounded px-2 py-1">
-              退出
+            <span className="hidden sm:inline font-bold" style={{ color: me.color }}>
+              {me.display_name}
+            </span>
+            <button
+              onClick={clearMe}
+              className="text-ink-soft hover:text-expense text-xs border border-line rounded px-2 py-1"
+            >
+              切换身份
             </button>
           </nav>
         )}

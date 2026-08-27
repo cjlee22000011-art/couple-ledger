@@ -2,40 +2,47 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { useAuth } from '@/lib/AuthContext';
+import { useWhoAmI } from '@/lib/WhoAmIContext';
+import WhoAmIPicker from '@/components/WhoAmIPicker';
 import { Category, TxType } from '@/lib/types';
 
 export default function SettingsPage() {
-  const { session, profile, couple, partner, refresh, loading } = useAuth();
+  const { me, profiles, refresh, loading } = useWhoAmI();
   const [cats, setCats] = useState<Category[]>([]);
-  const [name, setName] = useState('');
+  const [names, setNames] = useState<Record<string, string>>({});
   const [newCatName, setNewCatName] = useState('');
   const [newCatType, setNewCatType] = useState<TxType>('expense');
   const [newCatIcon, setNewCatIcon] = useState('🏷️');
 
   const load = useCallback(async () => {
-    if (!session) return;
-    const { data } = await supabase.from('categories').select('*').eq('user_id', session.user.id).order('type');
+    if (!me) return;
+    const { data } = await supabase.from('categories').select('*').eq('owner_id', me.id).order('type');
     setCats((data as Category[]) || []);
-  }, [session]);
+  }, [me]);
 
   useEffect(() => {
     load();
-    setName(profile?.display_name || '');
-  }, [load, profile]);
+  }, [load]);
 
-  async function saveName(e: React.FormEvent) {
-    e.preventDefault();
-    if (!session) return;
-    await supabase.from('profiles').update({ display_name: name }).eq('id', session.user.id);
+  useEffect(() => {
+    const init: Record<string, string> = {};
+    profiles.forEach((p) => (init[p.id] = p.display_name));
+    setNames(init);
+  }, [profiles]);
+
+  if (loading) return null;
+  if (!me) return <WhoAmIPicker />;
+
+  async function saveName(id: string) {
+    await supabase.from('profiles').update({ display_name: names[id] }).eq('id', id);
     refresh();
   }
 
   async function addCategory(e: React.FormEvent) {
     e.preventDefault();
-    if (!session || !newCatName.trim()) return;
+    if (!me || !newCatName.trim()) return;
     const { error } = await supabase.from('categories').insert({
-      user_id: session.user.id,
+      owner_id: me.id,
       name: newCatName.trim(),
       type: newCatType,
       icon: newCatIcon || '🏷️',
@@ -51,41 +58,34 @@ export default function SettingsPage() {
     load();
   }
 
-  async function unlinkPartner() {
-    if (!couple) return;
-    if (!confirm('确定要解除往来账绑定吗？历史往来记录会一并保留在数据库中，但页面将不再显示。')) return;
-    await supabase.from('couples').delete().eq('id', couple.id);
-    refresh();
-  }
-
-  if (loading) return null;
-
   return (
     <div className="space-y-6">
       <div className="card p-4">
-        <h2 className="ledger-stamp font-bold text-ledger mb-3">我的资料</h2>
-        <form onSubmit={saveName} className="flex gap-2">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="flex-1 border border-line rounded px-3 py-2 bg-white"
-          />
-          <button className="bg-ledger text-white rounded px-4 font-bold hover:bg-ledger-light">保存</button>
-        </form>
+        <h2 className="ledger-stamp font-bold text-ledger mb-3">两人的名字</h2>
+        <div className="space-y-2">
+          {profiles.map((p) => (
+            <div key={p.id} className="flex gap-2">
+              <input
+                value={names[p.id] ?? ''}
+                onChange={(e) => setNames({ ...names, [p.id]: e.target.value })}
+                className="flex-1 border border-line rounded px-3 py-2 bg-white"
+              />
+              <button
+                onClick={() => saveName(p.id)}
+                className="bg-ledger text-white rounded px-4 font-bold hover:bg-ledger-light"
+              >
+                保存
+              </button>
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-ink-soft mt-2">改名后，往来账里对应的历史记录也会自动显示新名字。</p>
       </div>
 
-      {couple && (
-        <div className="card p-4">
-          <h2 className="ledger-stamp font-bold text-ledger mb-2">往来账伴侣</h2>
-          <p className="text-sm text-ink-soft mb-3">当前已与 {partner?.display_name || '对方'} 绑定往来账本。</p>
-          <button onClick={unlinkPartner} className="text-expense text-sm border border-expense rounded px-3 py-1.5 hover:bg-expense hover:text-white">
-            解除绑定
-          </button>
-        </div>
-      )}
-
       <div className="card p-4">
-        <h2 className="ledger-stamp font-bold text-ledger mb-3">自定义分类</h2>
+        <h2 className="ledger-stamp font-bold text-ledger mb-3">
+          {names[me.id] || me.display_name} 的自定义分类
+        </h2>
         <form onSubmit={addCategory} className="flex gap-2 mb-4">
           <input
             value={newCatIcon}

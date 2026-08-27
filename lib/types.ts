@@ -7,16 +7,9 @@ export interface Profile {
   color: string;
 }
 
-export interface Couple {
-  id: string;
-  user_a: string;
-  user_b: string;
-  invite_code: string;
-}
-
 export interface Category {
   id: string;
-  user_id: string;
+  owner_id: string;
   name: string;
   type: TxType;
   icon: string;
@@ -24,7 +17,7 @@ export interface Category {
 
 export interface PersonalTransaction {
   id: string;
-  user_id: string;
+  owner_id: string;
   category_id: string | null;
   type: TxType;
   amount: number;
@@ -34,7 +27,6 @@ export interface PersonalTransaction {
 
 export interface SharedTransaction {
   id: string;
-  couple_id: string;
   payer_id: string;
   kind: SharedKind;
   amount: number;
