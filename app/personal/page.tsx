@@ -2,13 +2,12 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { useWhoAmI } from '@/lib/WhoAmIContext';
-import WhoAmIPicker from '@/components/WhoAmIPicker';
+import { useAuth } from '@/lib/AuthContext';
 import { Category, PersonalTransaction, TxType } from '@/lib/types';
 import { fmtMoney, today } from '@/lib/date';
 
 export default function PersonalPage() {
-  const { me, loading } = useWhoAmI();
+  const { session, loading } = useAuth();
   const [txs, setTxs] = useState<PersonalTransaction[]>([]);
   const [cats, setCats] = useState<Category[]>([]);
   const [type, setType] = useState<TxType>('expense');
@@ -19,36 +18,35 @@ export default function PersonalPage() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    if (!me) return;
+    if (!session) return;
     const [{ data: t }, { data: c }] = await Promise.all([
       supabase
         .from('personal_transactions')
         .select('*')
-        .eq('owner_id', me.id)
+        .eq('user_id', session.user.id)
         .order('occurred_on', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(200),
-      supabase.from('categories').select('*').eq('owner_id', me.id).order('name'),
+      supabase.from('categories').select('*').eq('user_id', session.user.id).order('name'),
     ]);
     setTxs((t as PersonalTransaction[]) || []);
     setCats((c as Category[]) || []);
-  }, [me]);
+  }, [session]);
 
   useEffect(() => {
     load();
   }, [load]);
 
   if (loading) return null;
-  if (!me) return <WhoAmIPicker />;
 
   const catsForType = cats.filter((c) => c.type === type);
 
   async function addTx(e: React.FormEvent) {
     e.preventDefault();
-    if (!me || !amount) return;
+    if (!session || !amount) return;
     setBusy(true);
     const { error } = await supabase.from('personal_transactions').insert({
-      owner_id: me.id,
+      user_id: session.user.id,
       type,
       amount: Number(amount),
       category_id: categoryId || null,

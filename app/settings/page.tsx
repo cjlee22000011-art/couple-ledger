@@ -2,47 +2,42 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { useWhoAmI } from '@/lib/WhoAmIContext';
-import WhoAmIPicker from '@/components/WhoAmIPicker';
+import { useAuth } from '@/lib/AuthContext';
 import { Category, TxType } from '@/lib/types';
 
 export default function SettingsPage() {
-  const { me, profiles, refresh, loading } = useWhoAmI();
+  const { session, profile, refresh, loading } = useAuth();
   const [cats, setCats] = useState<Category[]>([]);
-  const [names, setNames] = useState<Record<string, string>>({});
+  const [name, setName] = useState('');
   const [newCatName, setNewCatName] = useState('');
   const [newCatType, setNewCatType] = useState<TxType>('expense');
   const [newCatIcon, setNewCatIcon] = useState('🏷️');
 
   const load = useCallback(async () => {
-    if (!me) return;
-    const { data } = await supabase.from('categories').select('*').eq('owner_id', me.id).order('type');
+    if (!session) return;
+    const { data } = await supabase.from('categories').select('*').eq('user_id', session.user.id).order('type');
     setCats((data as Category[]) || []);
-  }, [me]);
+  }, [session]);
 
   useEffect(() => {
     load();
-  }, [load]);
-
-  useEffect(() => {
-    const init: Record<string, string> = {};
-    profiles.forEach((p) => (init[p.id] = p.display_name));
-    setNames(init);
-  }, [profiles]);
+    setName(profile?.display_name || '');
+  }, [load, profile]);
 
   if (loading) return null;
-  if (!me) return <WhoAmIPicker />;
 
-  async function saveName(id: string) {
-    await supabase.from('profiles').update({ display_name: names[id] }).eq('id', id);
+  async function saveName(e: React.FormEvent) {
+    e.preventDefault();
+    if (!session) return;
+    await supabase.from('profiles').update({ display_name: name }).eq('id', session.user.id);
     refresh();
   }
 
   async function addCategory(e: React.FormEvent) {
     e.preventDefault();
-    if (!me || !newCatName.trim()) return;
+    if (!session || !newCatName.trim()) return;
     const { error } = await supabase.from('categories').insert({
-      owner_id: me.id,
+      user_id: session.user.id,
       name: newCatName.trim(),
       type: newCatType,
       icon: newCatIcon || '🏷️',
@@ -61,31 +56,20 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div className="card p-4">
-        <h2 className="ledger-stamp font-bold text-ledger mb-3">两人的名字</h2>
-        <div className="space-y-2">
-          {profiles.map((p) => (
-            <div key={p.id} className="flex gap-2">
-              <input
-                value={names[p.id] ?? ''}
-                onChange={(e) => setNames({ ...names, [p.id]: e.target.value })}
-                className="flex-1 border border-line rounded px-3 py-2 bg-white"
-              />
-              <button
-                onClick={() => saveName(p.id)}
-                className="bg-ledger text-white rounded px-4 font-bold hover:bg-ledger-light"
-              >
-                保存
-              </button>
-            </div>
-          ))}
-        </div>
-        <p className="text-xs text-ink-soft mt-2">改名后，往来账里对应的历史记录也会自动显示新名字。</p>
+        <h2 className="ledger-stamp font-bold text-ledger mb-3">我的资料</h2>
+        <form onSubmit={saveName} className="flex gap-2">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="flex-1 border border-line rounded px-3 py-2 bg-white"
+          />
+          <button className="bg-ledger text-white rounded px-4 font-bold hover:bg-ledger-light">保存</button>
+        </form>
+        <p className="text-xs text-ink-soft mt-2">这个名字会显示在你加入的所有群组往来账里。</p>
       </div>
 
       <div className="card p-4">
-        <h2 className="ledger-stamp font-bold text-ledger mb-3">
-          {names[me.id] || me.display_name} 的自定义分类
-        </h2>
+        <h2 className="ledger-stamp font-bold text-ledger mb-3">自定义分类</h2>
         <form onSubmit={addCategory} className="flex gap-2 mb-4">
           <input
             value={newCatIcon}

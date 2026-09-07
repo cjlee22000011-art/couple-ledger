@@ -1,5 +1,4 @@
 export type TxType = 'income' | 'expense';
-export type SharedKind = 'expense' | 'settlement';
 
 export interface Profile {
   id: string;
@@ -9,7 +8,7 @@ export interface Profile {
 
 export interface Category {
   id: string;
-  owner_id: string;
+  user_id: string;
   name: string;
   type: TxType;
   icon: string;
@@ -17,7 +16,7 @@ export interface Category {
 
 export interface PersonalTransaction {
   id: string;
-  owner_id: string;
+  user_id: string;
   category_id: string | null;
   type: TxType;
   amount: number;
@@ -25,13 +24,41 @@ export interface PersonalTransaction {
   note: string | null;
 }
 
-export interface SharedTransaction {
+export interface Group {
   id: string;
+  name: string;
+  invite_code: string;
+  created_by: string;
+}
+
+export interface GroupMember {
+  group_id: string;
+  user_id: string;
+}
+
+export interface GroupExpense {
+  id: string;
+  group_id: string;
   payer_id: string;
-  kind: SharedKind;
   amount: number;
-  payer_share: number; // 0~1，仅 kind='expense' 时有意义
+  description: string | null;
   category: string | null;
+  occurred_on: string;
+  created_by: string;
+}
+
+export interface GroupExpenseShare {
+  expense_id: string;
+  user_id: string;
+  share_amount: number;
+}
+
+export interface GroupSettlement {
+  id: string;
+  group_id: string;
+  from_user: string;
+  to_user: string;
+  amount: number;
   occurred_on: string;
   note: string | null;
 }
