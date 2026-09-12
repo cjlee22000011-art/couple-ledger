@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useAuth } from '@/lib/AuthContext';
-import InstallAppButton from './InstallAppButton';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useAuth } from "@/lib/AuthContext";
+import InstallAppButton from "./InstallAppButton";
 
 const links = [
-  { href: '/personal', label: '个人账本' },
-  { href: '/groups', label: '群组往来账' },
-  { href: '/stats', label: '统计' },
-  { href: '/settings', label: '设置' },
+  { href: "/personal", label: "个人账本" },
+  { href: "/groups", label: "群组" },
+  { href: "/stats", label: "统计" },
+  { href: "/settings", label: "设置" },
 ];
 
 export default function Nav() {
@@ -32,14 +32,18 @@ export default function Nav() {
                   key={l.href}
                   href={l.href}
                   className={
-                    'text-xs sm:text-sm ' +
-                    (pathname?.startsWith(l.href) ? 'text-ledger font-bold' : 'text-ink-soft hover:text-ink')
+                    "text-xs sm:text-sm " +
+                    (pathname?.startsWith(l.href)
+                      ? "text-ledger font-bold"
+                      : "text-ink-soft hover:text-ink")
                   }
                 >
                   {l.label}
                 </Link>
               ))}
-              <span className="hidden md:inline text-xs sm:text-sm text-ink-soft">{profile?.display_name}</span>
+              <span className="hidden md:inline text-xs sm:text-sm text-ink-soft">
+                {profile?.display_name}
+              </span>
               <button
                 onClick={signOut}
                 className="text-xs text-ink-soft hover:text-expense border border-line rounded px-2 py-1"

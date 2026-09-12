@@ -130,11 +130,15 @@ create policy "查看自己所在群组的成员" on group_members for select us
 create policy "本人可加入群组" on group_members for insert with check (auth.uid() = user_id);
 create policy "本人可退出群组" on group_members for delete using (auth.uid() = user_id);
 
-create policy "群组成员可读写账单" on group_expenses for all using (
-  exists (select 1 from group_members gm where gm.group_id = group_expenses.group_id and gm.user_id = auth.uid())
-) with check (
+create policy "群组成员可查看账单" on group_expenses for select using (
   exists (select 1 from group_members gm where gm.group_id = group_expenses.group_id and gm.user_id = auth.uid())
 );
+create policy "群组成员可添加账单" on group_expenses for insert with check (
+  exists (select 1 from group_members gm where gm.group_id = group_expenses.group_id and gm.user_id = auth.uid())
+  and created_by = auth.uid()
+);
+create policy "仅创建者可修改自己的账单" on group_expenses for update using (created_by = auth.uid());
+create policy "仅创建者可删除自己的账单" on group_expenses for delete using (created_by = auth.uid());
 
 create policy "群组成员可读写分摊明细" on group_expense_shares for all using (
   exists (
@@ -162,6 +166,20 @@ returns trigger as $$
 begin
   insert into public.profiles (id, display_name)
   values (new.id, split_part(new.email, '@', 1));
+
+  insert into public.categories (user_id, name, type, icon) values
+    (new.id, '餐饮', 'expense', '🍚'),
+    (new.id, '交通', 'expense', '🚌'),
+    (new.id, '购物', 'expense', '🛍️'),
+    (new.id, '娱乐', 'expense', '🎮'),
+    (new.id, '居住', 'expense', '🏠'),
+    (new.id, '医疗', 'expense', '💊'),
+    (new.id, '其他支出', 'expense', '🏷️'),
+    (new.id, '工资', 'income', '💼'),
+    (new.id, '奖金', 'income', '🎁'),
+    (new.id, '理财收益', 'income', '📈'),
+    (new.id, '其他收入', 'income', '🏷️');
+
   return new;
 end;
 $$ language plpgsql security definer;

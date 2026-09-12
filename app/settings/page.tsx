@@ -75,7 +75,7 @@ export default function SettingsPage() {
           </button>
         </form>
         <p className="text-xs text-ink-soft mt-2">
-          这个名字会显示在你加入的所有群组往来账里。
+          这个名字会显示在你加入的所有群组里。
         </p>
       </div>
 
