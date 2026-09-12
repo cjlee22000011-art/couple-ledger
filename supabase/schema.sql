@@ -113,8 +113,19 @@ create policy "创建群组" on groups for insert with check (auth.uid() = creat
 create policy "创建者可修改群组" on groups for update using (auth.uid() = created_by);
 create policy "创建者可删除群组" on groups for delete using (auth.uid() = created_by);
 
+create or replace function public.is_group_member(gid uuid, uid uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from group_members gm where gm.group_id = gid and gm.user_id = uid
+  );
+$$;
+
 create policy "查看自己所在群组的成员" on group_members for select using (
-  exists (select 1 from group_members gm where gm.group_id = group_members.group_id and gm.user_id = auth.uid())
+  public.is_group_member(group_id, auth.uid())
 );
 create policy "本人可加入群组" on group_members for insert with check (auth.uid() = user_id);
 create policy "本人可退出群组" on group_members for delete using (auth.uid() = user_id);
