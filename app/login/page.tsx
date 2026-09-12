@@ -13,6 +13,14 @@ export default function LoginPage() {
   const [signedUpMsg, setSignedUpMsg] = useState(false);
   const router = useRouter();
 
+  function emailRedirectTo() {
+    // 拼出"部署后的登录页"完整地址，让 Supabase 的确认邮件点击后直接跳回这里，
+    // 而不是跳到 Supabase 自己的默认页面或者 localhost。
+    // NEXT_PUBLIC_BASE_PATH 是部署到 GitHub Pages 时的仓库名子路径，本地开发时通常是空的。
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH ? `/${process.env.NEXT_PUBLIC_BASE_PATH}` : '';
+    return `${window.location.origin}${basePath}/login/`;
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -26,7 +34,11 @@ export default function LoginPage() {
       }
       router.replace('/personal');
     } else {
-      const { error: err, data } = await supabase.auth.signUp({ email, password });
+      const { error: err, data } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: emailRedirectTo() },
+      });
       setBusy(false);
       if (err) {
         setError(err.message);
@@ -41,7 +53,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="max-w-sm mx-auto mt-16 card p-6">
+    <div className="max-w-sm mx-auto mt-10 sm:mt-16 card p-5 sm:p-6">
       <h1 className="ledger-stamp text-xl font-bold text-ledger mb-1">
         {mode === 'signin' ? '登记入账' : '开立新账'}
       </h1>
@@ -50,9 +62,9 @@ export default function LoginPage() {
       </p>
 
       {signedUpMsg ? (
-        <p className="text-sm text-income">
-          注册成功！如果 Supabase 项目开启了邮箱验证，请去邮箱点击确认链接后再登录；
-          如果没开启验证，直接切换到"登录"用刚才的邮箱密码登录即可。
+        <p className="text-sm text-income leading-relaxed">
+          注册成功！如果 Supabase 项目开启了邮箱验证，请去邮箱点击确认链接，点击后会直接跳回这个登录页，
+          再用刚才的邮箱密码登录即可；如果没开启验证，现在就可以直接切换到"登录"使用。
         </p>
       ) : (
         <form onSubmit={submit} className="space-y-3">
@@ -73,7 +85,7 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             className="w-full border border-line rounded px-3 py-2 bg-white"
           />
-          {error && <p className="text-expense text-sm">{error}</p>}
+          {error && <p className="text-expense text-sm break-words">{error}</p>}
           <button
             disabled={busy}
             className="w-full bg-ledger text-white rounded py-2 font-bold hover:bg-ledger-light disabled:opacity-50"

@@ -40,19 +40,37 @@ export default function GroupsPage() {
     if (!session || !newName.trim()) return;
     setBusy(true);
     setMsg(null);
-    const { data, error } = await supabase
+
+    const { data: group, error: groupErr } = await supabase
       .from('groups')
       .insert({ name: newName.trim(), created_by: session.user.id })
       .select()
       .single();
-    if (error || !data) {
+
+    if (groupErr || !group) {
       setBusy(false);
-      setMsg('创建失败：' + error?.message);
+      setMsg('创建群组失败：' + (groupErr?.message || '未知错误'));
       return;
     }
-    await supabase.from('group_members').insert({ group_id: data.id, user_id: session.user.id });
+
+    const { error: memberErr } = await supabase
+      .from('group_members')
+      .insert({ group_id: group.id, user_id: session.user.id });
+
     setBusy(false);
+
+    if (memberErr) {
+      // 群组已经建好了，但把自己加进成员失败了，明确告诉用户，而不是"看起来没反应"
+      setMsg('群组已创建，但加入成员失败：' + memberErr.message + '（可以尝试重新加入，或联系我修复）');
+      // 依然把这条加进列表，避免用户以为完全没成功而重复创建
+      setGroups((prev) => [group as Group, ...prev]);
+      return;
+    }
+
+    // 立即把新群组加到列表最前面，不用等下一次网络请求也能马上看到反馈
+    setGroups((prev) => [group as Group, ...prev]);
     setNewName('');
+    setMsg(`已创建群组 "${group.name}"`);
     load();
   }
 
@@ -91,14 +109,17 @@ export default function GroupsPage() {
         <p className="text-xs text-ink-soft mb-3">
           群组可以是你和女友两人，也可以拉一群朋友一起旅行分账，人数不限。
         </p>
-        <form onSubmit={createGroup} className="flex gap-2">
+        <form onSubmit={createGroup} className="flex flex-col sm:flex-row gap-2">
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="群组名称，如：日本旅行 2026"
-            className="flex-1 border border-line rounded px-3 py-2 bg-white"
+            className="flex-1 min-w-0 border border-line rounded px-3 py-2 bg-white"
           />
-          <button disabled={busy} className="bg-ledger text-white rounded px-4 font-bold hover:bg-ledger-light disabled:opacity-50">
+          <button
+            disabled={busy}
+            className="bg-ledger text-white rounded px-4 py-2 font-bold hover:bg-ledger-light disabled:opacity-50 whitespace-nowrap"
+          >
             创建
           </button>
         </form>
@@ -106,18 +127,21 @@ export default function GroupsPage() {
 
       <div className="card p-4">
         <h2 className="ledger-stamp font-bold text-ledger mb-3">用邀请码加入群组</h2>
-        <form onSubmit={joinGroup} className="flex gap-2">
+        <form onSubmit={joinGroup} className="flex flex-col sm:flex-row gap-2">
           <input
             value={joinCode}
             onChange={(e) => setJoinCode(e.target.value)}
             placeholder="输入朋友分享的邀请码"
-            className="flex-1 border border-line rounded px-3 py-2 bg-white"
+            className="flex-1 min-w-0 border border-line rounded px-3 py-2 bg-white"
           />
-          <button disabled={busy} className="border border-ledger text-ledger rounded px-4 font-bold hover:bg-ledger hover:text-white disabled:opacity-50">
+          <button
+            disabled={busy}
+            className="border border-ledger text-ledger rounded px-4 py-2 font-bold hover:bg-ledger hover:text-white disabled:opacity-50 whitespace-nowrap"
+          >
             加入
           </button>
         </form>
-        {msg && <p className="text-sm text-ink-soft mt-2">{msg}</p>}
+        {msg && <p className="text-sm text-ink-soft mt-2 break-words">{msg}</p>}
       </div>
 
       <div className="card divide-y divide-line">
@@ -127,10 +151,10 @@ export default function GroupsPage() {
           <Link
             key={g.id}
             href={`/groups/detail?id=${g.id}`}
-            className="flex items-center justify-between p-4 hover:bg-paper"
+            className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 p-4 hover:bg-paper"
           >
-            <span className="font-bold">{g.name}</span>
-            <span className="text-xs text-ink-soft font-mono">邀请码 {g.invite_code}</span>
+            <span className="font-bold break-words">{g.name}</span>
+            <span className="text-xs text-ink-soft font-mono whitespace-nowrap">邀请码 {g.invite_code}</span>
           </Link>
         ))}
       </div>

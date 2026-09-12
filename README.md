@@ -107,6 +107,13 @@ npm run dev
 Supabase **Authentication → URL Configuration** 里，把
 `https://<username>.github.io` 加入 **Site URL** 和 **Redirect URLs**。
 
+**注册确认邮件要跳回登录页，还需要多加一条精确的 Redirect URL：**
+```
+https://<username>.github.io/<仓库名>/login/
+```
+（结尾的 `/` 不能少，因为项目开了 `trailingSlash`）。这样用户点击确认邮件里的链接后，
+会直接跳回你部署的登录页，而不是 Supabase 自己的默认页面。
+
 ---
 
 ## 四、（可选）部署到 Vercel / Cloudflare Pages
@@ -125,6 +132,9 @@ Supabase **Authentication → URL Configuration** 里，把
 **iPhone（Safari）**：打开网址 → 底部分享按钮 → **添加到主屏幕**
 
 **安卓（Chrome）**：打开网址 → 右上角菜单（⋮）→ **添加到主屏幕 / 安装应用**
+
+顶部导航栏也有一个**"下载 App"**按钮：在支持自动安装的浏览器（Android Chrome 等）上点击会直接弹出系统安装提示；
+在 iOS Safari 或其他不支持自动弹窗的浏览器上，会弹出一个小提示框告诉你去哪里点"添加到主屏幕"。
 
 安装后主屏幕会出现独立图标，点开是全屏界面（没有地址栏），并内置基础离线缓存——
 之前打开过的页面即使暂时没网也能看到界面（记账这类需要联网写数据库的操作仍需要联网才能生效）。
@@ -156,7 +166,9 @@ lib/
   types.ts             全局 TypeScript 类型
   date.ts               日期/金额格式化小工具
 components/
-  Nav.tsx              顶部导航
+  Nav.tsx              顶部导航（含"下载 App"按钮，响应式布局不会在手机上超框）
+  AuthGate.tsx          全局路由守卫：未登录时输入任何网址都会被弹回 /login
+  InstallAppButton.tsx   PWA 安装按钮：支持的浏览器直接弹安装提示，不支持的弹指引说明
   ServiceWorkerRegister.tsx  注册 PWA 离线缓存
 public/
   sw.js                Service Worker（离线缓存逻辑）
@@ -183,6 +195,9 @@ supabase/
   "清空旧表"那几行 `drop table ... cascade`，再运行完整建表脚本。
 - **升级/覆盖项目文件时报一堆奇怪的找不到模块错误**：说明新旧版本文件混在了一起。
   建议解压新版本到全新的空文件夹，而不是在旧文件夹上覆盖粘贴，把 `.env.local` 复制过去即可。
+- **测试时点了很多次"创建群组"，Supabase 里出现了一堆重复/测试用的群组**：
+  去 Supabase **Table Editor → groups** 表，勾选那些测试数据的行直接删除即可
+  （对应的 `group_members` 记录会因为外键 `on delete cascade` 自动一起删掉）。
 
 ---
 

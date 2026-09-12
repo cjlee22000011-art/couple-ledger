@@ -173,8 +173,8 @@ function GroupDetailInner() {
   return (
     <div className="space-y-6">
       <div className="card p-4">
-        <h1 className="ledger-stamp text-lg font-bold text-ledger">{group.name}</h1>
-        <p className="text-xs text-ink-soft mt-1">
+        <h1 className="ledger-stamp text-lg font-bold text-ledger break-words">{group.name}</h1>
+        <p className="text-xs text-ink-soft mt-1 leading-relaxed break-words">
           邀请码 <span className="font-mono">{group.invite_code}</span>　分享给朋友，让 TA 在"群组往来账"页面输入即可加入。
           成员：{members.map((m) => m.display_name).join('、')}
         </p>
@@ -203,8 +203,8 @@ function GroupDetailInner() {
           <div className="space-y-2">
             <p className="text-xs text-ink-soft">建议转账（已算出最少笔数）：</p>
             {suggestions.map((s, i) => (
-              <div key={i} className="flex items-center justify-between bg-paper rounded px-3 py-2 text-sm">
-                <span>
+              <div key={i} className="flex flex-wrap items-center justify-between gap-2 bg-paper rounded px-3 py-2 text-sm">
+                <span className="break-words">
                   <span style={{ color: colorOf(s.from) }} className="font-bold">
                     {nameOf(s.from)}
                   </span>{' '}
@@ -216,7 +216,7 @@ function GroupDetailInner() {
                 </span>
                 <button
                   onClick={() => recordSettlement(s.from, s.to, s.amount)}
-                  className="text-xs bg-ledger text-white rounded px-2 py-1 hover:bg-ledger-light"
+                  className="text-xs bg-ledger text-white rounded px-2 py-1 hover:bg-ledger-light whitespace-nowrap"
                 >
                   标记已转
                 </button>
@@ -292,7 +292,7 @@ function GroupDetailInner() {
           <div className="space-y-2 bg-paper rounded p-3">
             {Array.from(participants).map((id) => (
               <div key={id} className="flex items-center justify-between gap-2 text-sm">
-                <span style={{ color: colorOf(id) }} className="font-bold">
+                <span style={{ color: colorOf(id) }} className="font-bold truncate">
                   {nameOf(id)}
                 </span>
                 <input
@@ -302,29 +302,29 @@ function GroupDetailInner() {
                   value={customAmounts[id] || ''}
                   onChange={(e) => setCustomAmounts({ ...customAmounts, [id]: e.target.value })}
                   placeholder="0.00"
-                  className="w-28 border border-line rounded px-2 py-1 bg-white text-right"
+                  className="w-24 sm:w-28 border border-line rounded px-2 py-1 bg-white text-right shrink-0"
                 />
               </div>
             ))}
-            <p className="text-xs text-ink-soft">
+            <p className="text-xs text-ink-soft leading-relaxed">
               已填 {fmtMoney(Object.values(customAmounts).reduce((s, v) => s + Number(v || 0), 0))}
-              　需要等于总金额 {amount ? fmtMoney(Number(amount)) : '¥0.00'}
+              ，需要等于总金额 {amount ? fmtMoney(Number(amount)) : '¥0.00'}
             </p>
           </div>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             placeholder="分类，如：住宿/餐饮/交通"
-            className="flex-1 border border-line rounded px-3 py-2 bg-white"
+            className="flex-1 min-w-0 border border-line rounded px-3 py-2 bg-white"
           />
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="border border-line rounded px-3 py-2 bg-white"
+            className="border border-line rounded px-3 py-2 bg-white w-full sm:w-auto"
           />
         </div>
         <input
@@ -346,21 +346,21 @@ function GroupDetailInner() {
           const expShares = shares.filter((s) => s.expense_id === exp.id);
           return (
             <div key={exp.id} className="p-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <p className="text-sm break-words">
                   <span style={{ color: colorOf(exp.payer_id) }} className="font-bold">
                     {nameOf(exp.payer_id)}
                   </span>{' '}
                   垫付了 {exp.category} {exp.description && `· ${exp.description}`}
                 </p>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 shrink-0">
                   <span className="font-mono font-bold">{fmtMoney(exp.amount)}</span>
                   <button onClick={() => removeExpense(exp.id)} className="text-ink-soft hover:text-expense text-xs">
                     删除
                   </button>
                 </div>
               </div>
-              <p className="text-xs text-ink-soft mt-1">
+              <p className="text-xs text-ink-soft mt-1 break-words">
                 {exp.occurred_on} ·{' '}
                 {expShares.map((s) => `${nameOf(s.user_id)} ${fmtMoney(s.share_amount)}`).join('，')}
               </p>

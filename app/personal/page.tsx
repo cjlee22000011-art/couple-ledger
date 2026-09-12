@@ -127,19 +127,19 @@ export default function PersonalPage() {
             </option>
           ))}
         </select>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="flex-1 border border-line rounded px-3 py-2 bg-white"
+            className="border border-line rounded px-3 py-2 bg-white w-full sm:w-auto"
           />
           <input
             type="text"
             placeholder="备注（可选）"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            className="flex-1 border border-line rounded px-3 py-2 bg-white"
+            className="flex-1 min-w-0 border border-line rounded px-3 py-2 bg-white"
           />
         </div>
         <button disabled={busy} className="w-full bg-ledger text-white rounded py-2 font-bold hover:bg-ledger-light disabled:opacity-50">
@@ -152,15 +152,15 @@ export default function PersonalPage() {
         {txs.map((t) => {
           const cat = cats.find((c) => c.id === t.category_id);
           return (
-            <div key={t.id} className="flex items-center justify-between p-3">
-              <div>
-                <p className="text-sm">
+            <div key={t.id} className="flex flex-wrap items-start justify-between gap-2 p-3">
+              <div className="min-w-0">
+                <p className="text-sm break-words">
                   {cat ? `${cat.icon} ${cat.name}` : '未分类'}{' '}
                   {t.note && <span className="text-ink-soft">· {t.note}</span>}
                 </p>
                 <p className="text-xs text-ink-soft">{t.occurred_on}</p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 shrink-0">
                 <span className={`font-mono font-bold ${t.type === 'income' ? 'text-income' : 'text-expense'}`}>
                   {t.type === 'income' ? '+' : '-'}
                   {fmtMoney(t.amount)}

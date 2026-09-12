@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
+import InstallAppButton from './InstallAppButton';
 
 const links = [
   { href: '/personal', label: '个人账本' },
@@ -17,34 +18,37 @@ export default function Nav() {
 
   return (
     <header className="border-b border-line bg-paper/95 backdrop-blur sticky top-0 z-10">
-      <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
-        <Link href="/" className="ledger-stamp text-lg font-bold text-ledger whitespace-nowrap">
+      <div className="max-w-3xl mx-auto px-4 py-2 flex flex-wrap items-center justify-between gap-2">
+        <Link href="/" className="ledger-stamp text-lg font-bold text-ledger">
           我们的账本
         </Link>
-        {session && (
-          <nav className="flex items-center gap-3 text-sm overflow-x-auto">
-            {links.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className={
-                  pathname?.startsWith(l.href)
-                    ? 'text-ledger font-bold whitespace-nowrap'
-                    : 'text-ink-soft hover:text-ink whitespace-nowrap'
-                }
+
+        <div className="flex flex-wrap items-center gap-2 justify-end">
+          <InstallAppButton />
+          {session && (
+            <>
+              {links.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className={
+                    'text-xs sm:text-sm ' +
+                    (pathname?.startsWith(l.href) ? 'text-ledger font-bold' : 'text-ink-soft hover:text-ink')
+                  }
+                >
+                  {l.label}
+                </Link>
+              ))}
+              <span className="hidden md:inline text-xs sm:text-sm text-ink-soft">{profile?.display_name}</span>
+              <button
+                onClick={signOut}
+                className="text-xs text-ink-soft hover:text-expense border border-line rounded px-2 py-1"
               >
-                {l.label}
-              </Link>
-            ))}
-            <span className="text-ink-soft hidden sm:inline whitespace-nowrap">{profile?.display_name}</span>
-            <button
-              onClick={signOut}
-              className="text-ink-soft hover:text-expense text-xs border border-line rounded px-2 py-1 whitespace-nowrap"
-            >
-              退出
-            </button>
-          </nav>
-        )}
+                退出
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );
