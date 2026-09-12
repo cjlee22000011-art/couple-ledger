@@ -4,22 +4,15 @@ import { GroupExpense, GroupExpenseShare, GroupSettlement } from './types';
  * 多人群组往来账 —— 核心算法
  * ------------------------------------------------------------
  * 1. computeGroupBalances：计算每个成员的"净余额"
- *      净余额 > 0 → 这个人被大家欠钱（垫付得多、该分摊的少）
+ *      净余额 > 0 → 这个人被大家欠钱
  *      净余额 < 0 → 这个人欠大家钱
- *    计算方式：
- *      净余额 = Σ(TA 作为 payer 垫付的账单金额)
- *              - Σ(TA 在每笔账单里应承担的分摊金额 share_amount)
- *              + Σ(TA 作为还款人付出的 settlement 金额)   [还债会让净余额趋近 0]
- *              - Σ(TA 作为收款人收到的 settlement 金额)
- *
- * 2. simplifyDebts：把复杂的多人欠款关系化简成最少笔数的转账建议。
- *    做法是经典的贪心算法：每次把"欠最多的人"和"被欠最多的人"直接匹配，
- *    虽不保证全局最优，但通常已经非常接近最少笔数，实现简单、足够实用。
+ * 2. simplifyDebts：把复杂的多人欠款关系化简成最少笔数的转账建议（贪心算法）。
+ * 3. splitEqually：均摊金额时自动处理四舍五入的 1 分钱误差。
  */
 
 export interface SettleSuggestion {
-  from: string; // 该转账的人（欠钱的人）
-  to: string; // 收款人（被欠钱的人）
+  from: string;
+  to: string;
   amount: number;
 }
 
@@ -74,10 +67,6 @@ export function simplifyDebts(balances: Record<string, number>): SettleSuggestio
   return result;
 }
 
-/**
- * 均摊金额计算：把 total 平均分给 n 个人，自动把因为四舍五入产生的
- * 1 分钱误差分配给前几位，保证总和精确等于 total（避免出现 0.1+0.1+0.1 != 0.3 的问题）。
- */
 export function splitEqually(total: number, n: number): number[] {
   if (n <= 0) return [];
   const cents = Math.round(total * 100);

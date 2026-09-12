@@ -1,8 +1,8 @@
 -- ============================================================
 -- 个人 + 多人群组记账应用 —— 数据库结构（含登录注册 + 群组账单）
 -- 在 Supabase 控制台的 SQL Editor 中整段运行即可
--- 如果你是在旧版本（无登录版）基础上升级，请先执行文件最下方的
--- "清空旧表" 那段（删掉 couples / 旧 shared_transactions 等），再运行本脚本。
+-- 如果你是在旧版本基础上升级，请先执行文件最下方的
+-- "清空旧表" 那段，再运行本脚本。
 -- ============================================================
 
 create extension if not exists pgcrypto;
@@ -69,7 +69,6 @@ create table if not exists group_expenses (
 );
 
 -- 7. 账单分摊明细：这笔账单里，每个参与人各自应该承担多少钱
--- （不要求平均分摊，每个人的金额可以完全不同，只要求总和等于 group_expenses.amount）
 create table if not exists group_expense_shares (
   expense_id uuid not null references group_expenses(id) on delete cascade,
   user_id uuid not null references profiles(id) on delete cascade,
@@ -101,8 +100,6 @@ alter table group_expenses enable row level security;
 alter table group_expense_shares enable row level security;
 alter table group_settlements enable row level security;
 
--- profiles：登录用户都能看到所有人的名字/头像色（用于群组里显示对方名字），
--- 但只能修改自己的资料
 create policy "已登录用户可查看所有资料" on profiles for select using (auth.role() = 'authenticated');
 create policy "创建自己的资料" on profiles for insert with check (auth.uid() = id);
 create policy "更新自己的资料" on profiles for update using (auth.uid() = id);
@@ -111,8 +108,6 @@ create policy "管理自己的分类" on categories for all using (auth.uid() = 
 create policy "管理自己的个人流水" on personal_transactions for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
--- groups：已登录用户都能"查找"群组（用于凭邀请码加入），
--- 但群组的账单/成员列表只有成员自己可见（见下面几张表）
 create policy "已登录用户可查找群组" on groups for select using (auth.role() = 'authenticated');
 create policy "创建群组" on groups for insert with check (auth.uid() = created_by);
 create policy "创建者可修改群组" on groups for update using (auth.uid() = created_by);
@@ -150,7 +145,7 @@ create policy "群组成员可读写结清记录" on group_settlements for all u
   exists (select 1 from group_members gm where gm.group_id = group_settlements.group_id and gm.user_id = auth.uid())
 );
 
--- 新用户注册时自动写入 profiles（displayName 取邮箱前缀，之后可在设置页修改）
+-- 新用户注册时自动写入 profiles
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
@@ -166,16 +161,15 @@ create trigger on_auth_user_created
   for each row execute procedure public.handle_new_user();
 
 -- ============================================================
--- 如果你是从旧版本（无登录版）升级上来，先执行这段清空旧表，
--- 再运行上面的建表脚本：
+-- 如果你是从旧版本升级上来，先执行这段清空旧表，再运行上面的建表脚本：
 -- ============================================================
--- drop table if exists shared_transactions cascade;
--- drop table if exists couples cascade;
 -- drop table if exists group_settlements cascade;
 -- drop table if exists group_expense_shares cascade;
 -- drop table if exists group_expenses cascade;
 -- drop table if exists group_members cascade;
 -- drop table if exists groups cascade;
+-- drop table if exists shared_transactions cascade;
+-- drop table if exists couples cascade;
 -- drop table if exists personal_transactions cascade;
 -- drop table if exists categories cascade;
 -- drop table if exists profiles cascade;

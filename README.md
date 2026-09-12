@@ -1,10 +1,10 @@
-# 我们的账本 · 个人记账 + 多人群组往来账
+# 我们的账本 · 个人记账 + 多人群组往来账（支持手机安装）
 
 技术栈：Next.js (App Router，静态导出) + Tailwind CSS + Supabase（Postgres + Auth + RLS）+ Recharts。
 
-> 这一版加回了**登录注册**，并把"往来账"从固定两人升级成**任意人数的群组**：
-> 创建群组、生成邀请码分享给朋友，每笔账单可以指定"谁付的钱"，以及**每个参与人各自分摊多少钱**（不要求平均），
-> 系统会自动算出每个人的净余额，并给出"最少笔数"的转账建议。
+> 登录注册 + 任意人数的群组往来账：创建群组、生成邀请码分享给朋友，每笔账单可以指定
+> "谁付的钱"以及**每个参与人各自分摊多少钱**（不要求平均）。系统自动算出每个人的净余额，
+> 并给出"最少笔数"的转账建议。手机浏览器打开后可以"添加到主屏幕"，像 App 一样使用。
 
 ---
 
@@ -51,11 +51,9 @@ Supabase 项目
 
 2. **`simplifyDebts`**：把多人之间复杂的欠款关系化简成**最少笔数**的转账建议。
    算法是经典的贪心策略——每次把"欠最多的人"和"被欠最多的人"直接匹配掉一部分，
-   循环直到所有人余额清零。比如 A 欠 B 100、B 欠 C 100，简化后就是"A 直接转 100 给 C"，
-   而不需要 A→B→C 转两次。
+   循环直到所有人余额清零。
 
-3. **`splitEqually`**：均摊金额时自动处理四舍五入的 1 分钱误差（比如 3 人分 10 元，
-   不会出现 3.33+3.33+3.33=9.99 少 1 分钱的问题，会自动把零头分给前几位）。
+3. **`splitEqually`**：均摊金额时自动处理四舍五入的 1 分钱误差。
 
 ---
 
@@ -63,10 +61,6 @@ Supabase 项目
 
 ```powershell
 # 1. 安装依赖
-# 如果你是在旧项目文件夹基础上覆盖更新的，建议先删掉旧的锁文件重新生成，
-# 避免出现 package.json 和 package-lock.json 版本对不上导致 `npm ci` 报错：
-# Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
-# Remove-Item package-lock.json -ErrorAction SilentlyContinue
 npm install
 
 # 2. 配置环境变量
@@ -105,7 +99,6 @@ npm run dev
    - `NEXT_PUBLIC_SUPABASE_URL` —— 纯净的 Project URL，形如 `https://xxxx.supabase.co`，
      **末尾不要带 `/rest/v1` 或多余斜杠**
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` —— Supabase 新版 API Keys 页面里的 **Publishable key**
-     （老项目叫 "anon public" key，是同一个用途）
 4. **开启 GitHub Pages**：仓库 Settings → Pages → Build and deployment → Source 选择 **GitHub Actions**。
 5. **推送到 `main` 分支**，GitHub Actions 会自动执行 [`deploy.yml`](./.github/workflows/deploy.yml)。
 6. 访问 `https://<username>.github.io/<repo>/`。
@@ -124,11 +117,31 @@ Supabase **Authentication → URL Configuration** 里，把
 
 ---
 
-## 五、目录结构
+## 五、手机上"添加到主屏幕"（PWA）
+
+项目内置了 PWA 支持（`app/manifest.ts`、`public/sw.js`、`app/icon.png` 等），部署后不用额外操作，
+直接用手机浏览器打开网址就能安装成"类 App"图标：
+
+**iPhone（Safari）**：打开网址 → 底部分享按钮 → **添加到主屏幕**
+
+**安卓（Chrome）**：打开网址 → 右上角菜单（⋮）→ **添加到主屏幕 / 安装应用**
+
+安装后主屏幕会出现独立图标，点开是全屏界面（没有地址栏），并内置基础离线缓存——
+之前打开过的页面即使暂时没网也能看到界面（记账这类需要联网写数据库的操作仍需要联网才能生效）。
+
+想换掉默认图标，替换这几个文件（保持文件名和尺寸不变）：
+`app/icon.png`（192×192）、`app/apple-icon.png`（180×180）、
+`public/icons/icon-192.png`、`public/icons/icon-512.png`、`public/icons/icon-maskable-512.png`。
+
+---
+
+## 六、目录结构
 
 ```
 app/
-  layout.tsx        根布局，挂载 AuthProvider + 顶部导航
+  layout.tsx        根布局：AuthProvider + 顶部导航 + Service Worker 注册
+  manifest.ts         PWA 应用清单（自动生成 manifest.webmanifest）
+  icon.png / apple-icon.png   浏览器标签页 / iOS 主屏幕图标
   page.tsx           首页：根据登录状态跳转
   login/page.tsx      登录/注册
   personal/page.tsx    个人账本：记账 + 列表
@@ -142,6 +155,12 @@ lib/
   groupBalance.ts     多人往来账核心算法：净余额计算 + 债务化简 + 均摊
   types.ts             全局 TypeScript 类型
   date.ts               日期/金额格式化小工具
+components/
+  Nav.tsx              顶部导航
+  ServiceWorkerRegister.tsx  注册 PWA 离线缓存
+public/
+  sw.js                Service Worker（离线缓存逻辑）
+  icons/               安卓安装图标各尺寸
 supabase/
   schema.sql          建表 + RLS 策略 + 新用户触发器
 .github/workflows/
@@ -150,25 +169,26 @@ supabase/
 
 ---
 
-## 六、常见问题排查
+## 七、常见问题排查
 
-- **`npm ci` 报 "Invalid: lock file's xxx does not satisfy xxx"**：说明 `package.json` 和
+- **`npm ci` 报 "Invalid: lock file's xxx does not satisfy xxx"**：`package.json` 和
   `package-lock.json` 版本对不上。删掉 `node_modules` 和 `package-lock.json` 重新 `npm install`。
 - **CSS 报 `@import rules must precede all rules`**：`globals.css` 里的 `@import` 字体引入
   必须写在文件**最顶部**，在 `@tailwind` 之前。
 - **网页显示 `Invalid path specified in request URL` / 请求网址出现两次 `/rest/v1/`**：
-  `NEXT_PUBLIC_SUPABASE_URL` 填错了，多带了路径。去 Supabase **Settings → General**
-  确认纯净的 Project URL，格式必须是 `https://项目ID.supabase.co`，不带任何后缀。
+  `NEXT_PUBLIC_SUPABASE_URL` 填错了，多带了路径，确认是纯净的 `https://项目ID.supabase.co`。
 - **GitHub Pages 提示 "Upgrade or make this repository public to enable Pages"**：
-  免费账号的私有仓库不能用 Pages，去仓库 Settings → General → Danger Zone 把仓库改成 Public。
-- **从旧版本（无登录版）升级**：先在 Supabase SQL Editor 执行
-  `supabase/schema.sql` 文件最下方注释掉的"清空旧表"那几行 `drop table ... cascade`，
-  再运行完整建表脚本。
+  免费账号私有仓库不能用 Pages，去 Settings → General → Danger Zone 把仓库改成 Public。
+- **从旧版本升级**：先在 Supabase SQL Editor 执行 `supabase/schema.sql` 文件最下方注释掉的
+  "清空旧表"那几行 `drop table ... cascade`，再运行完整建表脚本。
+- **升级/覆盖项目文件时报一堆奇怪的找不到模块错误**：说明新旧版本文件混在了一起。
+  建议解压新版本到全新的空文件夹，而不是在旧文件夹上覆盖粘贴，把 `.env.local` 复制过去即可。
 
 ---
 
-## 七、后续可扩展方向
+## 八、后续可扩展方向
 - 用 Supabase Storage 保存账单小票图片
-- 群组内按百分比分摊（目前是均摊或自定义金额，可以再加一种"按比例"模式）
+- 群组内按百分比分摊（目前是均摊或自定义金额）
 - 预算提醒（月度支出超过设定阈值时提示）
 - 群组内多币种支持（出国旅行分账常见需求）
+- 用 Capacitor 把网页包装成真正的 iOS / Android 原生 App，上架 App Store / Google Play

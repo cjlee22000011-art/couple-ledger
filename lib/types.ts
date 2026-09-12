@@ -20,7 +20,7 @@ export interface PersonalTransaction {
   category_id: string | null;
   type: TxType;
   amount: number;
-  occurred_on: string; // yyyy-mm-dd
+  occurred_on: string;
   note: string | null;
 }
 

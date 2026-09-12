@@ -35,7 +35,6 @@ export default function LoginPage() {
       if (data.session) {
         router.replace('/personal');
       } else {
-        // Supabase 项目如果开启了邮箱验证，注册后不会立刻有 session
         setSignedUpMsg(true);
       }
     }

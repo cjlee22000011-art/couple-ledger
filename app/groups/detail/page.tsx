@@ -30,7 +30,6 @@ function GroupDetailInner() {
   const [settlements, setSettlements] = useState<GroupSettlement[]>([]);
   const [busy, setBusy] = useState(false);
 
-  // 记账表单状态
   const [payerId, setPayerId] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -53,8 +52,8 @@ function GroupDetailInner() {
     if (memberIds.length > 0) {
       const { data: profs } = await supabase.from('profiles').select('*').in('id', memberIds);
       setMembers((profs as Profile[]) || []);
-      if (!payerId) setPayerId(session.user.id);
-      if (participants.size === 0) setParticipants(new Set(memberIds));
+      setPayerId((prev) => prev || session.user.id);
+      setParticipants((prev) => (prev.size === 0 ? new Set(memberIds) : prev));
     }
     const expenseList = (exps as GroupExpense[]) || [];
     setExpenses(expenseList);
@@ -68,7 +67,7 @@ function GroupDetailInner() {
     } else {
       setShares([]);
     }
-  }, [groupId, session]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [groupId, session]);
 
   useEffect(() => {
     load();
@@ -181,7 +180,6 @@ function GroupDetailInner() {
         </p>
       </div>
 
-      {/* 平账结果 */}
       <div className="card p-4">
         <h2 className="ledger-stamp font-bold text-ledger mb-3">当前每人净余额</h2>
         <div className="space-y-1 mb-4">
@@ -228,7 +226,6 @@ function GroupDetailInner() {
         )}
       </div>
 
-      {/* 记账表单 */}
       <form onSubmit={addExpense} className="card p-4 space-y-3">
         <h2 className="ledger-stamp font-bold text-ledger">记一笔账单</h2>
 
@@ -342,7 +339,6 @@ function GroupDetailInner() {
         </button>
       </form>
 
-      {/* 账单历史 */}
       <div className="card divide-y divide-line">
         <h2 className="ledger-stamp font-bold text-ledger p-4 pb-2">账单记录</h2>
         {expenses.length === 0 && <p className="p-4 text-ink-soft text-sm">还没有账单记录。</p>}
@@ -373,7 +369,6 @@ function GroupDetailInner() {
         })}
       </div>
 
-      {/* 结清历史 */}
       {settlements.length > 0 && (
         <div className="card divide-y divide-line">
           <h2 className="ledger-stamp font-bold text-ledger p-4 pb-2">结清记录</h2>

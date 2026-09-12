@@ -34,7 +34,6 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          # 仓库名会作为 basePath，例如 you/couple-ledger -> couple-ledger
           NEXT_PUBLIC_BASE_PATH: ${{ github.event.repository.name }}
         run: npm run build
 
