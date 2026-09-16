@@ -62,3 +62,9 @@ export interface GroupSettlement {
   occurred_on: string;
   note: string | null;
 }
+
+export interface GroupCategory {
+  id: string;
+  group_id: string;
+  name: string;
+}

@@ -12,6 +12,7 @@ create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   display_name text not null,
   color text not null default '#B3562B',
+  email text,
   created_at timestamptz not null default now()
 );
 
@@ -88,6 +89,15 @@ create table if not exists group_settlements (
   created_at timestamptz not null default now()
 );
 
+-- 9. 群组账单分类（每个群组自己的一套分类，可以自行添加）
+create table if not exists group_categories (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references groups(id) on delete cascade,
+  name text not null,
+  created_at timestamptz not null default now(),
+  unique (group_id, name)
+);
+
 -- ============================================================
 -- 行级安全策略 (RLS)
 -- ============================================================
@@ -99,6 +109,7 @@ alter table group_members enable row level security;
 alter table group_expenses enable row level security;
 alter table group_expense_shares enable row level security;
 alter table group_settlements enable row level security;
+alter table group_categories enable row level security;
 
 create policy "已登录用户可查看所有资料" on profiles for select using (auth.role() = 'authenticated');
 create policy "创建自己的资料" on profiles for insert with check (auth.uid() = id);
@@ -127,8 +138,17 @@ $$;
 create policy "查看自己所在群组的成员" on group_members for select using (
   public.is_group_member(group_id, auth.uid())
 );
-create policy "本人可加入群组" on group_members for insert with check (auth.uid() = user_id);
+create policy "本人可加入群组" on group_members for insert with check (
+  auth.uid() = user_id
+  or public.is_group_member(group_id, auth.uid())
+);
 create policy "本人可退出群组" on group_members for delete using (auth.uid() = user_id);
+
+create policy "群组成员可读写分类" on group_categories for all using (
+  public.is_group_member(group_id, auth.uid())
+) with check (
+  public.is_group_member(group_id, auth.uid())
+);
 
 create policy "群组成员可查看账单" on group_expenses for select using (
   exists (select 1 from group_members gm where gm.group_id = group_expenses.group_id and gm.user_id = auth.uid())
@@ -164,8 +184,8 @@ create policy "群组成员可读写结清记录" on group_settlements for all u
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, display_name)
-  values (new.id, split_part(new.email, '@', 1));
+    insert into public.profiles (id, display_name, email)
+  values (new.id, split_part(new.email, '@', 1), new.email);
 
   insert into public.categories (user_id, name, type, icon) values
     (new.id, '餐饮', 'expense', '🍚'),
@@ -188,6 +208,27 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+  -- 新建群组时自动预置一套默认账单分类
+create or replace function public.seed_default_group_categories()
+returns trigger as $$
+begin
+  insert into public.group_categories (group_id, name) values
+    (new.id, '餐饮'),
+    (new.id, '交通'),
+    (new.id, '住宿'),
+    (new.id, '娱乐'),
+    (new.id, '购物'),
+    (new.id, '门票'),
+    (new.id, '其他');
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists on_group_created on groups;
+create trigger on_group_created
+  after insert on groups
+  for each row execute procedure public.seed_default_group_categories();
 
 -- ============================================================
 -- 如果你是从旧版本升级上来，先执行这段清空旧表，再运行上面的建表脚本：
