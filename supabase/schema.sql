@@ -36,6 +36,7 @@ create table if not exists personal_transactions (
   amount numeric(12,2) not null check (amount > 0),
   occurred_on date not null default current_date,
   note text,
+  group_expense_id uuid,
   created_at timestamptz not null default now()
 );
 
@@ -229,6 +230,23 @@ drop trigger if exists on_group_created on groups;
 create trigger on_group_created
   after insert on groups
   for each row execute procedure public.seed_default_group_categories();
+  
+  
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.table_constraints
+    where constraint_name = 'personal_transactions_group_expense_id_fkey'
+  ) then
+    alter table personal_transactions
+      add constraint personal_transactions_group_expense_id_fkey
+      foreign key (group_expense_id) references group_expenses(id) on delete cascade;
+  end if;
+end $$;
+
+create unique index if not exists personal_transactions_group_share_uidx
+  on personal_transactions (group_expense_id, user_id)
+  where group_expense_id is not null;
 
 -- ============================================================
 -- 如果你是从旧版本升级上来，先执行这段清空旧表，再运行上面的建表脚本：

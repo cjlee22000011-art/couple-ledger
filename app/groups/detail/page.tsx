@@ -2,6 +2,17 @@
 
 import { Suspense, useEffect, useState, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { Group, Profile, GroupExpense, GroupExpenseShare, GroupSettlement, GroupCategory } from '@/lib/types';
@@ -10,6 +21,7 @@ import { fmtMoney, today } from '@/lib/date';
 
 // 群组账单的默认分类（跟个人账本的分类是分开的两套，不需要用户手动输入）
 const GROUP_CATEGORIES = ['餐饮', '交通', '住宿', '娱乐', '购物', '门票', '其他'];
+const PIE_COLORS = ['#B3562B', '#3F6FA6', '#2F7A4F', '#8A6B3A', '#6E5A9C', '#C08A2B', '#4B7A8C'];
 
 export default function GroupDetailPage() {
   return (
@@ -122,6 +134,23 @@ function GroupDetailInner() {
     () => expenses.filter((e) => e.created_by !== session?.user.id),
     [expenses, session]
   );
+
+  // 群组统计：按分类汇总总支出、每人花费对比
+  const categoryChartData = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const e of expenses) {
+      const key = e.category || '未分类';
+      map.set(key, (map.get(key) || 0) + Number(e.amount));
+    }
+    return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
+  }, [expenses]);
+
+  const memberChartData = useMemo(
+    () => members.map((m) => ({ name: m.display_name, 花费: Number((totalSpent[m.id] ?? 0).toFixed(2)) })),
+    [members, totalSpent]
+  );
+
+  const groupTotal = useMemo(() => expenses.reduce((s, e) => s + Number(e.amount), 0), [expenses]);
 
   function nameOf(id: string) {
     return members.find((m) => m.id === id)?.display_name || '未知';
@@ -470,6 +499,41 @@ function GroupDetailInner() {
           ))}
         </div>
         <p className="text-xs text-ink-soft mt-2">这里统计的是每个人在这个群组里实际分摊到的总金额，跟"净余额"是两回事。</p>
+      </div>
+
+      <div className="card p-4">
+        <h2 className="ledger-stamp font-bold text-ledger mb-3">群组统计</h2>
+        <p className="text-sm text-ink-soft mb-3">
+          群组总支出 <span className="font-mono font-bold text-ink">{fmtMoney(groupTotal)}</span>
+        </p>
+
+        {expenses.length === 0 ? (
+          <p className="text-ink-soft text-sm">还没有账单，记几笔之后这里会显示统计图表。</p>
+        ) : (
+          <>
+            <p className="text-xs text-ink-soft mb-2">按分类占比</p>
+            <ResponsiveContainer width="100%" height={240}>
+              <PieChart>
+                <Pie data={categoryChartData} dataKey="value" nameKey="name" outerRadius={90} label={(d) => d.name}>
+                  {categoryChartData.map((_, i) => (
+                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v: number) => fmtMoney(v)} />
+              </PieChart>
+            </ResponsiveContainer>
+
+            <p className="text-xs text-ink-soft mt-4 mb-2">每人花费对比</p>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={memberChartData}>
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip formatter={(v: number) => fmtMoney(v)} />
+                <Bar dataKey="花费" fill="#123A40" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </>
+        )}
       </div>
 
       <form onSubmit={submitExpense} className="card p-4 space-y-3">

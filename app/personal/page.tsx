@@ -207,6 +207,7 @@ export default function PersonalPage() {
         )}
         {txs.map((t) => {
           const cat = cats.find((c) => c.id === t.category_id);
+          const fromGroup = !!t.group_expense_id;
           return (
             <div
               key={t.id}
@@ -216,6 +217,11 @@ export default function PersonalPage() {
                 <p className="text-sm break-words">
                   {cat ? `${cat.icon} ${cat.name}` : "未分类"}{" "}
                   {t.note && <span className="text-ink-soft">· {t.note}</span>}
+                  {fromGroup && (
+                    <span className="ml-1 text-[10px] text-ledger border border-ledger/40 rounded px-1 py-0.5 align-middle">
+                      群组同步
+                    </span>
+                  )}
                 </p>
                 <p className="text-xs text-ink-soft">{t.occurred_on}</p>
               </div>
@@ -226,18 +232,29 @@ export default function PersonalPage() {
                   {t.type === "income" ? "+" : "-"}
                   {fmtMoney(t.amount)}
                 </span>
-                <button
-                  onClick={() => startEdit(t)}
-                  className="text-ink-soft hover:text-ledger text-xs"
-                >
-                  编辑
-                </button>
-                <button
-                  onClick={() => removeTx(t.id)}
-                  className="text-ink-soft hover:text-expense text-xs"
-                >
-                  删除
-                </button>
+                {fromGroup ? (
+                  <span
+                    className="text-ink-soft text-xs"
+                    title="这条记录来自群组账单，请去对应群组修改或删除"
+                  >
+                    去群组修改
+                  </span>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => startEdit(t)}
+                      className="text-ink-soft hover:text-ledger text-xs"
+                    >
+                      编辑
+                    </button>
+                    <button
+                      onClick={() => removeTx(t.id)}
+                      className="text-ink-soft hover:text-expense text-xs"
+                    >
+                      删除
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           );

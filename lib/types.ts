@@ -1,4 +1,4 @@
-export type TxType = 'income' | 'expense';
+export type TxType = "income" | "expense";
 
 export interface Profile {
   id: string;
@@ -22,6 +22,7 @@ export interface PersonalTransaction {
   amount: number;
   occurred_on: string;
   note: string | null;
+  group_expense_id?: string | null;
 }
 
 export interface Group {
